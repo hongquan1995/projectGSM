@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Delete resource &apos;CodeProject/Core/Src/L506&apos;" deleteContents="false" description="Delete resource &apos;CodeProject/Core/Src/L506&apos;" element1="/CodeProject/Core/Src/L506" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1625412567938"/>
+</session>

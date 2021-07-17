@@ -1,0 +1,6 @@
+time.c:22:6:wait_to_reinitial	16	static
+time.c:31:6:wait_to_reinitialTCP	16	static
+time.c:39:6:processChar	32	static
+time.c:49:6:takeTime	16	static
+time.c:58:6:convertTime	16	static
+time.c:85:9:convertTimeSendSV	24	static

@@ -1,0 +1,3 @@
+trace.c:14:6:vprint	216	static
+trace.c:23:6:my_printf	16	static
+trace.c:31:6:printArray	24	static

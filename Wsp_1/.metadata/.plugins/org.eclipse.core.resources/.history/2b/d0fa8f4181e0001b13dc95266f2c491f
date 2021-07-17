@@ -1,0 +1,57 @@
+/*
+ * L506.h
+ *
+ *  Created on: Jul 4, 2021
+ *      Author: 0
+ */
+
+#ifndef INC_L506_H_
+#define INC_L506_H_
+
+typedef uint8_t (*fncProcess)(char*);
+
+typedef struct{
+	uint8_t* packetAt;
+	fncProcess fncType;
+	uint8_t size;
+}t_uartAt;
+
+typedef enum
+{
+	Check_AT = 0,
+	Check_CPIN,
+	Check_CSQ,
+	Check_CGREG,
+	Set_TIMEOUT,
+	Set_CIPMODE,
+	Set_NETOPEN,
+	Get_IPADDR,
+	Set_CIPRXGET,
+	Creat_TCP,
+	Check_Statuslink,
+	Send_Command
+}
+}StructSTT_AT;
+void Sim_PWON();
+void Sim_PWOFF();
+void Pow_ON_OFF();
+void GSM_Init();
+
+uint8_t fnParseOKPacket(char* arrRes);
+uint8_t fnParseCPINPacket(char* arrRes);
+uint8_t fnParseCSQPacket(char* arrRes);
+uint8_t fnParseCGREGPacket(char* arrRes);
+uint8_t fnParseCREGPacket(char* arrRes);
+uint8_t fnParseCGATTPacket(char* arrRes);
+uint8_t fnParseIPADDRPacket(char* arrRes);
+uint8_t fnParseCIPOPQUERYPacket(char* arrRes);
+uint8_t fnParseSendSVPacket(char* arrRes);
+uint8_t fnParseReceiveSVPacket(char* arrRes);
+
+uint8_t fnCheckPacket(uint8_t* packet, uint8_t len, fncProcess fnParse);
+void GPRS_Ask(uint8_t cmd[], uint8_t len);
+void processChar(char *strInput, uint8_t chr, char strRes[]);
+void takeTime(uint8_t *sv_time);
+void convertTime(uint8_t *p_time);
+
+#endif /* INC_L506_H_ */

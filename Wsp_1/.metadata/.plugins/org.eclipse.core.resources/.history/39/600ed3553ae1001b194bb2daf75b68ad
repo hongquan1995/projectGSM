@@ -1,0 +1,16 @@
+/*
+ * time.h
+ *
+ *  Created on: Jul 10, 2021
+ *      Author: 0
+ */
+
+#ifndef INC_TIME_H_
+#define INC_TIME_H_
+
+void wait_to_reinitial(uint8_t time);
+void wait_to_reinitialTCP(uint8_t time);
+void processChar(char *strInput, uint8_t chr, char strRes[]);
+
+
+#endif /* INC_TIME_H_ */
