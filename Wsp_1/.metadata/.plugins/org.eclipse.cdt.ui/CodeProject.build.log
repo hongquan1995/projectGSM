@@ -1,10 +1,83 @@
-16:03:36 **** Incremental Build of configuration Debug for project CodeProject ****
+14:47:29 **** Incremental Build of configuration Debug for project CodeProject ****
 make -j8 all 
+arm-none-eabi-gcc "../Core/Src/L506.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32L452xx -DDEBUG -c -I../Core/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32L4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Core/Src/L506.d" -MT"Core/Src/L506.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/L506.o"
+../Core/Src/L506.c: In function 'GSM_Init':
+../Core/Src/L506.c:54:39: warning: implicit declaration of function 'strlen' [-Wimplicit-function-declaration]
+    HAL_UART_Transmit(&huart1, buffer, strlen((char*)buffer), 1000);
+                                       ^~~~~~
+../Core/Src/L506.c:54:39: warning: incompatible implicit declaration of built-in function 'strlen'
+../Core/Src/L506.c:54:39: note: include '<string.h>' or provide a declaration of 'strlen'
+../Core/Src/L506.c: In function 'fnParseOKPacket':
+../Core/Src/L506.c:58:8: warning: implicit declaration of function 'memcmp' [-Wimplicit-function-declaration]
+   if (!memcmp(arrRes, "\r\nOK", 4)) {
+        ^~~~~~
+../Core/Src/L506.c: In function 'fnCheckSendSVPacket':
+../Core/Src/L506.c:122:8: warning: implicit declaration of function 'strstr' [-Wimplicit-function-declaration]
+  ptr = strstr(arrRes, "CIPSEND:SUCCESS");
+        ^~~~~~
+../Core/Src/L506.c:122:8: warning: incompatible implicit declaration of built-in function 'strstr'
+../Core/Src/L506.c:122:8: note: include '<string.h>' or provide a declaration of 'strstr'
+../Core/Src/L506.c: In function 'fnParseReceiveSVPacket':
+../Core/Src/L506.c:132:8: warning: incompatible implicit declaration of built-in function 'strstr'
+  ptr = strstr(arrRes, "CIPRXGET:SUCCESS");
+        ^~~~~~
+../Core/Src/L506.c:132:8: note: include '<string.h>' or provide a declaration of 'strstr'
+../Core/Src/L506.c: In function 'fnCheckPacket':
+../Core/Src/L506.c:141:3: warning: implicit declaration of function 'memset' [-Wimplicit-function-declaration]
+   memset(buffer, '\0', 256);
+   ^~~~~~
+../Core/Src/L506.c:141:3: warning: incompatible implicit declaration of built-in function 'memset'
+../Core/Src/L506.c:141:3: note: include '<string.h>' or provide a declaration of 'memset'
+../Core/Src/L506.c:146:23: warning: pointer targets in passing argument 1 of 'fnParse' differ in signedness [-Wpointer-sign]
+      answer = fnParse(buffer);
+                       ^~~~~~
+../Core/Src/L506.c:146:23: note: expected 'char *' but argument is of type 'uint8_t * {aka unsigned char *}'
+../Core/Src/L506.c:148:38: warning: incompatible implicit declaration of built-in function 'strlen'
+   HAL_UART_Transmit(&huart1, buffer, strlen((char*)buffer), 1000);
+                                      ^~~~~~
+../Core/Src/L506.c:148:38: note: include '<string.h>' or provide a declaration of 'strlen'
+../Core/Src/L506.c: In function 'GPRS_Ask':
+../Core/Src/L506.c:154:3: warning: incompatible implicit declaration of built-in function 'memset'
+   memset(buffer, '\0', 256);
+   ^~~~~~
+../Core/Src/L506.c:154:3: note: include '<string.h>' or provide a declaration of 'memset'
+../Core/Src/L506.c:158:38: warning: incompatible implicit declaration of built-in function 'strlen'
+   HAL_UART_Transmit(&huart1, buffer, strlen((char*)buffer), 1000);
+                                      ^~~~~~
+../Core/Src/L506.c:158:38: note: include '<string.h>' or provide a declaration of 'strlen'
+../Core/Src/L506.c: In function 'fncSend_DataServer':
+../Core/Src/L506.c:179:46: warning: incompatible implicit declaration of built-in function 'strlen'
+       HAL_UART_Transmit(&huart1,serverText1, strlen((char*)serverText1), 1000);
+                                              ^~~~~~
+../Core/Src/L506.c:179:46: note: include '<string.h>' or provide a declaration of 'strlen'
+../Core/Src/L506.c:182:46: warning: incompatible implicit declaration of built-in function 'strlen'
+       HAL_UART_Transmit(&huart1,serverText2, strlen((char*)serverText2), 1000);
+                                              ^~~~~~
+../Core/Src/L506.c:182:46: note: include '<string.h>' or provide a declaration of 'strlen'
+../Core/Src/L506.c: In function 'fncReceive_DataServer':
+../Core/Src/L506.c:196:4: warning: implicit declaration of function 'memcpy' [-Wimplicit-function-declaration]
+    memcpy(revRtc, buffer, sizeof(buffer));
+    ^~~~~~
+../Core/Src/L506.c:196:4: warning: incompatible implicit declaration of built-in function 'memcpy'
+../Core/Src/L506.c:196:4: note: include '<string.h>' or provide a declaration of 'memcpy'
+../Core/Src/L506.c:198:14: warning: incompatible implicit declaration of built-in function 'strlen'
+    vr_test = strlen(arrRevProcess);
+              ^~~~~~
+../Core/Src/L506.c:198:14: note: include '<string.h>' or provide a declaration of 'strlen'
+arm-none-eabi-gcc -o "CodeProject.elf" @"objects.list"   -mcpu=cortex-m4 -T"D:\SaoViet\Wsp_1\CodeProject\STM32L452RCTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="CodeProject.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: CodeProject.elf
+ 
+arm-none-eabi-objdump -h -S  CodeProject.elf  > "CodeProject.list"
+arm-none-eabi-objcopy  -O binary  CodeProject.elf  "CodeProject.bin"
 arm-none-eabi-size   CodeProject.elf 
    text	   data	    bss	    dec	    hex	filename
-  23904	     28	   3116	  27048	   69a8	CodeProject.elf
+  23560	    332	   2868	  26760	   6888	CodeProject.elf
 Finished building: default.size.stdout
  
+Finished building: CodeProject.bin
+ 
+Finished building: CodeProject.list
+ 
 
-16:03:36 Build Finished. 0 errors, 0 warnings. (took 211ms)
+14:47:30 Build Finished. 0 errors, 17 warnings. (took 848ms)
 
