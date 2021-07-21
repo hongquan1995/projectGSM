@@ -22,7 +22,7 @@ extern RTC_DateTypeDef sDate2;
 void wait_to_reinitial(uint8_t time){
 		count++;
 		 if(count == time){
-		  	gsm_state = CMD_PWNON;
+		  	gsm_state = -1;
 		  	count = 0;
 		  }
 }
@@ -31,7 +31,7 @@ void wait_to_reinitial(uint8_t time){
 void wait_to_reinitialTCP(uint8_t time){
 		count++;
 		 if(count == time){
-		  	gsm_state = CMD_CREATE_TCP;
+		  	gsm_state = CMD_CIPOPEN;
 		  	count = 0;
 		  }
 }

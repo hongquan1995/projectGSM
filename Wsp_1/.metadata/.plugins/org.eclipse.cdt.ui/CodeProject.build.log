@@ -1,10 +1,10 @@
-11:37:26 **** Incremental Build of configuration Debug for project CodeProject ****
+16:03:36 **** Incremental Build of configuration Debug for project CodeProject ****
 make -j8 all 
 arm-none-eabi-size   CodeProject.elf 
    text	   data	    bss	    dec	    hex	filename
-  23560	    332	   2868	  26760	   6888	CodeProject.elf
+  23904	     28	   3116	  27048	   69a8	CodeProject.elf
 Finished building: default.size.stdout
  
 
-11:37:27 Build Finished. 0 errors, 0 warnings. (took 226ms)
+16:03:36 Build Finished. 0 errors, 0 warnings. (took 211ms)
 

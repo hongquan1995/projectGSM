@@ -30,10 +30,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-typedef struct{
-	volatile uint8_t flag_timer;
-	uint32_t vr_count;
-}sTimer;
 
 /* USER CODE END PTD */
 
@@ -58,28 +54,48 @@ UART_HandleTypeDef huart3;
 uint8_t data = 0;
 uint8_t indexBuffer = 0;
 
-uint32_t time_sendServer = 30000;
+volatile uint8_t flag_timer_10s = 0;
+volatile uint8_t flag_timer_1000ms = 0;
+volatile uint8_t flag_timer_500ms = 0;
+volatile uint8_t flag_timer_2000ms = 0;
+
+uint32_t vr_count_10s = 0;
+uint32_t vr_count_1000ms = 0;
+uint32_t vr_count_500ms = 0;
+uint32_t vr_count_2000ms = 0;
+uint32_t time_sendServer = 29500;
 uint32_t time_conv = 0;
 
-sTimer sTimer_10s ;
-sTimer sTimer_1000ms;
-sTimer sTimer_500ms;
-sTimer sTimer_7000ms;
-
-
-
+uint8_t send_count = 0;
 uint8_t buffer[256];
 uint8_t bufferTest[50];
 uint8_t dataTest;
+char revRtc[256];
 char arrRevProcess[256]={0};
 
 int result;
 
+uint8_t value;
+uint8_t test = 0;
 uint8_t count = 0;
 uint16_t num = 0;
 
 uint8_t txTest[] = "quan\r\n";
 uint8_t vr_test = 0;
+
+
+// "\r\nOK\r\n"
+// "\r\n+CPIN: READY\r\n\r\nOK\r\n"
+// "\r\n+CSQ: "
+// "\r\n+CGREG: 0,1\r\n\e\nOK\r\n"
+// "\r\n+CREG: 0,1\r\n\r\nOK\r\n"
+// "\r\n+CGATT: 1\r\n\r\nOK\r\n"
+// "\r\nOK\r\n"
+// "\r\nOK\r\n"
+// ""
+// ""
+// ""
+// ""
 
 
 uint8_t arr[256];
@@ -108,20 +124,48 @@ static void MX_RTC_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-t_uartAt arrInitialSim[]={{CHECK_CMD_AT, 				{(uint8_t*)"AT\r\n",4},												fnParseOKPacket},
-					  	  {CHECK_STATUS_SIM, 			{(uint8_t*)"AT+CPIN?\r\n",10},										fnParseCPINPacket},
-						  {CHECK_CMD_CSQ,	 			{(uint8_t*)"AT+CSQ\r\n",8},											fnParseCSQPacket},
-						  {CHECK_STATUS_NETWORK, 		{(uint8_t*)"AT+CGREG?\r\n",11},										fnParseCGREGPacket},
-						  {CMD_REPORT_NETWORK,			{(uint8_t*)"AT+CREG?\r\n",10},										fnParseCREGPacket},
-						  {CHECK_ATTACHED_STATUS, 		{(uint8_t*)"AT+CGATT?\r\n",11},										fnParseCGATTPacket},
-						  {CMD_CIPTIMEOUT, 				{(uint8_t*)"AT+CIPTIMEOUT=30000,20000,40000,50000\r\n",39},			fnParseOKPacket},
-						  {CHECK_MODE_TCP, 				{(uint8_t*)"AT+CIPMODE=0\r\n",14},									fnParseOKPacket},
-						  {CHECK_CMD_NETOPEN, 			{(uint8_t*)"AT+NETOPEN\r\n",12},									fnParseOKPacket},
-						  {CMD_GET_IPADDR, 				{(uint8_t*)"AT+IPADDR\r\n",11},										fnParseIPADDRPacket},
-						  {CMD_CREATE_TCP, 				{(uint8_t*)"AT+CIPOPEN=1,\"TCP\",\"113.190.240.47\",7580\r\n",42},	fnParseOKPacket},
-						  {CHECK_CMD_CIPOPQUERY, 		{(uint8_t*)"AT+CIPOPQUERY=1\r\n",17},								fnParseCIPOPQUERYPacket},
-						  {CMD_SEND_DATA, 				{(uint8_t*)"AT+CIPSEND=1,24\r\n",16},								fnParseSendSVPacket},
-						  {CMD_RECEIVE_DATA, 			{(uint8_t*)"\r\nAT+CIPRXGET=0,1\r\n",19},							fnParseReceiveSVPacket}};
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if(htim->Instance == TIM2)
+	{
+		  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_3);
+		  vr_count_10s ++;
+		  vr_count_1000ms ++;
+		  vr_count_500ms ++;
+		  vr_count_2000ms ++;
+
+		  if(vr_count_10s == time_sendServer){
+			  flag_timer_10s = 1; // timer du 10s thi gui du lieu len server
+			  vr_count_10s = 0;
+		  }
+		  if(vr_count_1000ms == 1000){
+			  flag_timer_1000ms = 1; // timer du 200ms
+			  vr_count_1000ms = 0;
+		  }
+		  if(vr_count_500ms == 500){
+			  flag_timer_500ms = 1; // timer du 500ms
+			  vr_count_500ms = 0;
+		  }
+		  if(vr_count_2000ms == 2000){ // timer du 2s
+			  flag_timer_2000ms = 1;
+			  vr_count_2000ms = 0;
+		  }
+	}
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if(huart->Instance == USART3)
+	{
+		if(data != 0){
+		buffer[indexBuffer] = data;
+		indexBuffer++;
+		//HAL_UART_Transmit_IT(&huart1, (uint8_t *)&Data, 1);
+		HAL_UART_Receive_IT(&huart3, &data, 1);
+		}
+	}
+}
 
 /* USER CODE END 0 */
 
@@ -132,6 +176,22 @@ t_uartAt arrInitialSim[]={{CHECK_CMD_AT, 				{(uint8_t*)"AT\r\n",4},												
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	t_uartAt arrInitialSim[]={{CMD_AT, 				{(uint8_t*)"AT\r\n",4},												fnParseOKPacket},
+						  	  {CMD_CPIN, 			{(uint8_t*)"AT+CPIN?\r\n",10},										fnParseCPINPacket},
+							  {CMD_CSQ,	 			{(uint8_t*)"AT+CSQ\r\n",8},											fnParseCSQPacket},
+							  {CMD_CGREG, 			{(uint8_t*)"AT+CGREG?\r\n",11},										fnParseCGREGPacket},
+							  {CMD_CREG,			{(uint8_t*)"AT+CREG?\r\n",10},										fnParseCREGPacket},
+							  {CMD_CGATT, 			{(uint8_t*)"AT+CGATT?\r\n",11},										fnParseCGATTPacket},
+							  {CMD_CIPTIMEOUT, 		{(uint8_t*)"AT+CIPTIMEOUT=30000,20000,40000,50000\r\n",39},			fnParseOKPacket},
+							  {CMD_CIPMODE, 		{(uint8_t*)"AT+CIPMODE=0\r\n",14},									fnParseOKPacket},
+							  {CMD_NETOPEN, 		{(uint8_t*)"AT+NETOPEN\r\n",12},									fnParseOKPacket},
+							  {CMD_IPADDR, 			{(uint8_t*)"AT+IPADDR\r\n",11},										fnParseIPADDRPacket},
+							  {CMD_CIPOPEN, 		{(uint8_t*)"AT+CIPOPEN=1,\"TCP\",\"113.190.240.47\",7580\r\n",42},	fnParseOKPacket},
+							  {CMD_CIPOPQUERY, 		{(uint8_t*)"AT+CIPOPQUERY=1\r\n",17},								fnParseCIPOPQUERYPacket},
+							  {CMD_CIPSEND, 		{(uint8_t*)"AT+CIPSEND=1,24\r\n",16},								fnParseSendSVPacket},
+							  {CMD_CIPRXGET, 		{(uint8_t*)"\r\nAT+CIPRXGET=0,1\r\n",19},							fnParseReceiveSVPacket}};
+
+
 
   /* USER CODE END 1 */
 
@@ -174,68 +234,167 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
   switch (gsm_state){
-  	 case CMD_PWNON:
-  		  GSM_Init();
-  		  gsm_state = CHECK_CMD_AT;
-  		  break;
-  	 case CHECK_CMD_AT:
-  		  fncSend_CommandAT(CHECK_CMD_AT, CHECK_STATUS_SIM);
-  		  break;
-  	 case CHECK_STATUS_SIM:
-  		  fncSend_CommandAT(CHECK_STATUS_SIM, CHECK_CMD_CSQ);
-  		  break;
-  	 case CHECK_CMD_CSQ:
-  		  fncSend_CommandAT(CHECK_CMD_CSQ, CHECK_STATUS_NETWORK);
-  		  break;
-  	 case CHECK_STATUS_NETWORK:
-  		  fncSend_CommandAT(CHECK_STATUS_NETWORK, CMD_REPORT_NETWORK);
-   		  break;
-  	 case CMD_REPORT_NETWORK:
-  		  fncSend_CommandAT(CMD_REPORT_NETWORK, CHECK_ATTACHED_STATUS);
-    	  break;
-  	 case CHECK_ATTACHED_STATUS:
-  		  fncSend_CommandAT(CHECK_ATTACHED_STATUS, CMD_CIPTIMEOUT);
-     	  break;
+  	 case -1:
+  		GSM_Init();
+  			gsm_state = CMD_AT;
+  			break;
+  	 case CMD_AT:
+  		result = fnCheckPacket(arrInitialSim[CMD_AT].strSend.packetAt, arrInitialSim[CMD_AT].strSend.length, arrInitialSim[CMD_AT].fncType);
+  		if(result != 0){
+  			gsm_state = CMD_CPIN;
+  			break;
+  		}
+  		else
+  			wait_to_reinitial(10);
+  		break;
+
+  	 case CMD_CPIN:
+  		result = fnCheckPacket(arrInitialSim[CMD_CPIN].strSend.packetAt, arrInitialSim[CMD_CPIN].strSend.length, arrInitialSim[CMD_CPIN].fncType);
+  		if(result != 0){
+  		  	gsm_state = CMD_CSQ;
+  		  	break;
+  		}
+  		else
+  			wait_to_reinitial(10);
+  		break;
+
+  	 case CMD_CSQ:
+  		result = fnCheckPacket(arrInitialSim[CMD_CSQ].strSend.packetAt, arrInitialSim[CMD_CSQ].strSend.length, arrInitialSim[CMD_CSQ].fncType);
+  		if(result != 0){
+  			gsm_state = CMD_CGREG;
+  			break;
+  		}
+  		else
+  		  	wait_to_reinitial(10);
+  		break;
+
+  	 case CMD_CGREG:
+  		result = fnCheckPacket(arrInitialSim[CMD_CGREG].strSend.packetAt, arrInitialSim[CMD_CGREG].strSend.length, arrInitialSim[CMD_CGREG].fncType);
+   		if(result != 0){
+   			gsm_state = CMD_CREG;
+   			break;
+   		}
+   		else
+   			wait_to_reinitial(10);
+   		break;
+
+  	 case CMD_CREG:
+  		result = fnCheckPacket(arrInitialSim[CMD_CREG].strSend.packetAt, arrInitialSim[CMD_CREG].strSend.length, arrInitialSim[CMD_CREG].fncType);
+    	if(result != 0){
+    		gsm_state = CMD_CGATT;
+    		break;
+    	}
+    	else
+    		wait_to_reinitial(10);
+    	break;
+
+  	 case CMD_CGATT:
+  		result = fnCheckPacket(arrInitialSim[CMD_CGATT].strSend.packetAt, arrInitialSim[CMD_CGATT].strSend.length, arrInitialSim[CMD_CGATT].fncType);
+     	if(result != 0){
+     		gsm_state = CMD_CIPTIMEOUT;
+     		break;
+     	}
+     	else
+     		wait_to_reinitial(10);
+     	break;
+
   	 case CMD_CIPTIMEOUT:
-  		  fncSend_CommandAT(CMD_CIPTIMEOUT, CHECK_MODE_TCP);
-      	  break;
-  	 case CHECK_MODE_TCP:
-  		  fncSend_CommandAT(CHECK_MODE_TCP, CHECK_CMD_NETOPEN);
-       	  break;
- 	 case CHECK_CMD_NETOPEN:
- 		  fncSend_CommandAT(CHECK_CMD_NETOPEN, CMD_GET_IPADDR);
-          break;
- 	 case CMD_GET_IPADDR:
- 		  fncSend_CommandAT(CMD_GET_IPADDR, CMD_CREATE_TCP);
-          break;
- 	 case CMD_CREATE_TCP:
- 		  fncSend_CommandAT(CMD_CREATE_TCP, CHECK_CMD_CIPOPQUERY);
-          break;
- 	 case CHECK_CMD_CIPOPQUERY:
- 		  fncSend_CommandAT(CHECK_CMD_CIPOPQUERY, CMD_SEND_DATA);
-          break;
- 	 case CMD_SEND_DATA:
- 		 if(1 == sTimer_10s.flag_timer){
- 			result = fncSend_DataServer(CMD_SEND_DATA, arr, 24);
- 			if(0 == result){
- 				break;
- 			}
- 			sTimer_10s.flag_timer = 0;
+  		result = fnCheckPacket(arrInitialSim[CMD_CIPTIMEOUT].strSend.packetAt, arrInitialSim[CMD_CIPTIMEOUT].strSend.length, arrInitialSim[CMD_CIPTIMEOUT].fncType);
+      	if(result != 0){
+      		gsm_state = CMD_CIPMODE;
+      		break;
+      	}
+      	else
+      		wait_to_reinitial(10);
+      	break;
+
+  	 case CMD_CIPMODE:
+  		result = fnCheckPacket(arrInitialSim[CMD_CIPMODE].strSend.packetAt, arrInitialSim[CMD_CIPMODE].strSend.length, arrInitialSim[CMD_CIPMODE].fncType);
+       	if(result != 0){
+       		gsm_state = CMD_NETOPEN;
+       		break;
+       	}
+       	else
+       		wait_to_reinitial(10);
+       	break;
+
+ 	 case CMD_NETOPEN:
+ 		result = fnCheckPacket(arrInitialSim[CMD_NETOPEN].strSend.packetAt, arrInitialSim[CMD_NETOPEN].strSend.length, arrInitialSim[CMD_NETOPEN].fncType);
+        if(result != 0){
+        	gsm_state = CMD_IPADDR;
+        	break;
+        }
+        else
+        	wait_to_reinitial(10);
+        break;
+
+ 	 case CMD_IPADDR:
+ 		result = fnCheckPacket(arrInitialSim[CMD_IPADDR].strSend.packetAt, arrInitialSim[CMD_IPADDR].strSend.length, arrInitialSim[CMD_IPADDR].fncType);
+         if(result != 0){
+         	gsm_state = CMD_CIPOPEN;
+         	break;
+         }
+         else
+        	wait_to_reinitial(10);
+         break;
+
+ 	 case CMD_CIPOPEN:
+ 		result = fnCheckPacket(arrInitialSim[CMD_CIPOPEN].strSend.packetAt, arrInitialSim[CMD_CIPOPEN].strSend.length, arrInitialSim[CMD_CIPOPEN].fncType);
+         if(result != 0){
+         	gsm_state = CMD_CIPOPQUERY;
+         	break;
+         }
+         else
+        	wait_to_reinitial(10);
+         break;
+
+ 	 case CMD_CIPOPQUERY:
+ 		result = fnCheckPacket(arrInitialSim[CMD_CIPOPQUERY].strSend.packetAt, arrInitialSim[CMD_CIPOPQUERY].strSend.length, arrInitialSim[CMD_CIPOPQUERY].fncType);
+         if(result != 0){
+         	gsm_state = CMD_CIPSEND;
+         	break;
+         }
+         else
+        	 wait_to_reinitialTCP(10);
+         break;
+
+ 	 case CMD_CIPSEND:
+ 		 if(flag_timer_10s == 1){
+ 			 result = fnCheckPacket(arrInitialSim[CMD_CIPSEND].strSend.packetAt,arrInitialSim[CMD_CIPSEND].strSend.length, arrInitialSim[CMD_CIPSEND].fncType);
+ 			 if(result != 0){
+ 				//GPRS_Ask(txTest, strlen(txTest)); // gui du lieu len server
+ 				num ++;
+ 				GPRS_Ask(arr, 24);
+ 			 }
+ 			 else{
+ 				 wait_to_reinitialTCP(3);
+ 				 break;
+ 			 }
+
+ 			flag_timer_10s = 0;
  		 }
- 		 	gsm_state = CMD_RECEIVE_DATA;
+ 		 	 gsm_state = CMD_CIPRXGET;
  		 break;
 
- 	 case CMD_RECEIVE_DATA:
- 		if(1 == sTimer_1000ms.flag_timer){
- 			sTimer_1000ms.flag_timer = 0;
- 		}
- 			fncReceive_DataServer(CMD_RECEIVE_DATA);
+ 	 case CMD_CIPRXGET:
+ 		if(flag_timer_1000ms == 1){
+ 			 flag_timer_1000ms = 0;
+ 			 result = fnCheckPacket(arrInitialSim[CMD_CIPRXGET].strSend.packetAt,arrInitialSim[CMD_CIPRXGET].strSend.length, arrInitialSim[CMD_CIPRXGET].fncType);
+ 			 if(result == 1){
+ 				memcpy(revRtc, buffer, sizeof(buffer));
+ 				processChar(revRtc, '\n', arrRevProcess);
+ 				vr_test = strlen(arrRevProcess);
+ 				//HAL_UART_Transmit(&huart1, &vr_test, 1, 1000);
+ 				result = 0;
+ 				}
+ 			}
  			gsm_state = CMD_REVPROCESS;
  		break;
 
  	 case CMD_REVPROCESS:
- 		 if(1 == sTimer_500ms.flag_timer){
+ 		 if(flag_timer_500ms == 1){
  			if(arrRevProcess[vr_test-1] == 1){
+// 			 if(arrRevProcess[0] != 0){
  				takeTime((uint8_t*)arrRevProcess);
  				HAL_RTC_SetTime(&hrtc, &sTime2, RTC_FORMAT_BCD);
  				HAL_RTC_SetDate(&hrtc, &sDate2, RTC_FORMAT_BCD);
@@ -249,17 +408,17 @@ int main(void)
  				HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BCD);
  				HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BCD);
  				convertTime(arr, num);
- 				sTimer_500ms.flag_timer = 0;
+ 				flag_timer_500ms = 0;
  		}
  		gsm_state = CMD_TRANSRTC;
  		break;
 
  	 case CMD_TRANSRTC:
- 			 if(1 == sTimer_7000ms.flag_timer){
+ 			 if(flag_timer_2000ms == 1){
  				  HAL_UART_Transmit(&huart1, arr, 17, 1000);
- 				 sTimer_7000ms.flag_timer = 0;
+ 				  flag_timer_2000ms = 0;
  			 }
- 		gsm_state = CMD_SEND_DATA;
+ 		gsm_state = CMD_CIPSEND;
  		break;
   	  }
   }
@@ -404,7 +563,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 15;
+  htim2.Init.Prescaler = 16;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 999;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -511,6 +670,7 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
@@ -537,47 +697,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	if(htim->Instance == TIM2)
-	{
-		  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_3);
-		  sTimer_10s.vr_count ++;
-		  sTimer_1000ms.vr_count ++;
-		  sTimer_500ms.vr_count ++;
-		  sTimer_7000ms.vr_count ++;
-
-		  if(sTimer_10s.vr_count == time_sendServer){
-			  sTimer_10s.flag_timer = 1; // timer du 10s thi gui du lieu len server
-			  sTimer_10s.vr_count = 0;
-		  }
-		  if(1000 == sTimer_1000ms.vr_count){
-			  sTimer_1000ms.flag_timer = 1; // timer du 1000ms
-			  sTimer_1000ms.vr_count = 0;
-		  }
-		  if(500 == sTimer_500ms.vr_count){
-			  sTimer_500ms.flag_timer = 1; // timer du 500ms
-			  sTimer_500ms.vr_count = 0;
-		  }
-		  if(7000 ==  sTimer_7000ms.vr_count){ // timer du 7s
-			  sTimer_7000ms.flag_timer = 1;
-			  sTimer_7000ms.vr_count = 0;
-		  }
-	}
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	if(huart->Instance == USART3)
-	{
-		if(data != 0){
-		buffer[indexBuffer] = data;
-		indexBuffer++;
-		//HAL_UART_Transmit_IT(&huart1, (uint8_t *)&Data, 1);
-		HAL_UART_Receive_IT(&huart3, &data, 1);
-		}
-	}
-}
 
 /* USER CODE END 4 */
 
