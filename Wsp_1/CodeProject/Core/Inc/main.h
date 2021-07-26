@@ -47,7 +47,7 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-
+#define 		TIME_SEND_S				20
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
