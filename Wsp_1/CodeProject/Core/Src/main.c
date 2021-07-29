@@ -55,13 +55,15 @@ uint8_t data = 0;
 uint8_t indexBuffer = 0;
 uint8_t buffer[256];
 uint8_t arrtime_rtc[256];
-uint8_t txTest[] = "quanchim456\r\n";
+//uint8_t txTest[] = "quanchim456\r\n";
+
+extern sTimer sTimer_1000ms;
 
 RTC_TimeTypeDef sTime = {0};
 RTC_DateTypeDef sDate = {0};
 
-RTC_TimeTypeDef sTime2 = {0};
-RTC_DateTypeDef sDate2 = {0};
+RTC_TimeTypeDef sTimedif = {0};
+RTC_DateTypeDef sDatedif = {0};
 
 RTC_AlarmTypeDef sAlarm = {0};
 
@@ -131,8 +133,8 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 		Sim_work();
-		packet_rtc_data(arrtime_rtc);
-		Sim_SendToServer(CMD_SEND_DATA, arrtime_rtc, strlen((char*)arrtime_rtc), TIME_SEND_S);
+		Packet_Rtc_SendToServer(arrtime_rtc, strlen((char*)arrtime_rtc), TIME_SEND_S);
+		Sim_ReceiveToServer(CMD_RECEIVE_DATA);
   }
   /* USER CODE END 3 */
 }

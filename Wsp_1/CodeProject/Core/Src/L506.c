@@ -10,6 +10,7 @@
 #include "string.h"
 #include "stdlib.h"
 #include "myLib.h"
+#include "stdbool.h"
 
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart3;
@@ -17,9 +18,8 @@ extern uint8_t data;
 extern uint8_t indexBuffer;
 
 extern sTimer sTimer_10s ;
+extern sTimer sTimer_100ms;
 extern sTimer sTimer_1000ms;
-extern sTimer sTimer_500ms;
-extern sTimer sTimer_7000ms;
 
 extern uint8_t vr_count;
 extern uint16_t num_check;
@@ -44,10 +44,10 @@ uint32_t time_conv = 0;
 
 uint8_t vr_test = 0;
 
-uint8_t arr_cmd_send[] = "AT+CIPSEND=1,";
+static uint8_t arr_cmd_send[] = "AT+CIPSEND=1,";
 
-uint8_t serverText1[] = "gui thanh cong ban tin len server\r\n";
-uint8_t serverText2[] = "gui khong thanh cong ban tin len server\r\n";
+static uint8_t serverText1[] = "gui thanh cong ban tin len server\r\n";
+static uint8_t serverText2[] = "gui khong thanh cong ban tin len server\r\n";
 
 t_uartAt arrInitialSim[]={{CHECK_CMD_AT, 				{(uint8_t*)"AT\r\n",4},												fnParseOKPacket},
 					  	  {CHECK_STATUS_SIM, 			{(uint8_t*)"AT+CPIN?\r\n",10},										fnParseCPINPacket},
@@ -171,16 +171,32 @@ uint8_t fnParseReceiveSVPacket(char* arrRes) {	// kiem tra phan hoi nhan
 	return 0;
 }
 
-uint8_t fnCheckPacket(uint8_t* packet, uint16_t len, fncProcess fnParse) { // ham gui du lieu co kiem tra phan hoi
+uint8_t fnCheckPacket(uint8_t* packet, uint16_t len, fncProcess fnParse, bool showLog) { // ham gui du lieu co kiem tra phan hoi
+	 uint8_t last_indexBuffer = 0;
+	 uint16_t timeCount = 0;
 	 indexBuffer = 0;
 	 memset(buffer, '\0', 256);
 	 HAL_UART_Transmit(&huart3, packet, len, 1000);
-	 HAL_UART_Transmit(&huart1, packet, len, 1000);
-	 HAL_Delay(300);
+	 if(showLog == true){
+		 HAL_UART_Transmit(&huart1, packet, len, 1000);
+	 }
+//	 HAL_Delay(200);
+	 while(indexBuffer == 0 && timeCount < TIMEOUT_WAIT_RX_MS)// break khi có data, timeout là 200 ms
+	 {
+		 HAL_Delay(1);// 1 ms
+		 timeCount++;
+	 }
+	 while( last_indexBuffer != indexBuffer) //break khi khong còn nhận ở ngắt, toàn bộ rx đã nhận
+	 {
+		 last_indexBuffer = indexBuffer;
+		 HAL_Delay(1);
+	 }
 	 if (fnParse) {
 	 	  answer = fnParse(buffer);
 	   }
-	 HAL_UART_Transmit(&huart1, buffer, strlen((char*)buffer), 1000);
+	 if(showLog == true){
+		 HAL_UART_Transmit(&huart1, buffer, strlen((char*)buffer), 1000);
+	 }
 	 return answer;
 }
 
@@ -194,7 +210,7 @@ void GPRS_Ask(uint8_t cmd[], uint8_t len){		// ham gui du lieu
 }
 
 void fncSend_CommandAT(uint8_t curr_cmd, uint8_t next_cmd){
-		result = fnCheckPacket(arrInitialSim[curr_cmd].strSend.packetAt, arrInitialSim[curr_cmd].strSend.length, arrInitialSim[curr_cmd].fncType);
+		result = fnCheckPacket(arrInitialSim[curr_cmd].strSend.packetAt, arrInitialSim[curr_cmd].strSend.length, arrInitialSim[curr_cmd].fncType, true);
 		if(result != 0){
 			gsm_state = next_cmd;
 		}
@@ -215,10 +231,10 @@ uint8_t fncSend_DataServer(uint8_t curr_cmd, uint8_t *arrSend, uint32_t len){
 		strcpy(fullCmdSend, (const char*)arrInitialSim[curr_cmd].strSend.packetAt);
 		strcat(fullCmdSend, numArr);
 		lengh = arrInitialSim[curr_cmd].strSend.length + strlen(numArr);
-		result = fnCheckPacket((uint8_t*)fullCmdSend, lengh, arrInitialSim[curr_cmd].fncType);
+		result = fnCheckPacket((uint8_t*)fullCmdSend, lengh, arrInitialSim[curr_cmd].fncType, true);
 		if(result != 0){
 	 		num_check ++;
-	 		result = fnCheckPacket(arrSend, len, fnCheckSendSVPacket);
+	 		result = fnCheckPacket(arrSend, len, fnCheckSendSVPacket, true);
 	 			if(result != 0){
 	 				HAL_UART_Transmit(&huart1,serverText1, strlen((char*)serverText1), 1000);
 	 				}
@@ -235,14 +251,19 @@ uint8_t fncSend_DataServer(uint8_t curr_cmd, uint8_t *arrSend, uint32_t len){
 
 void  fncReceive_DataServer(uint8_t curr_cmd){
 	 char revRtc[256];
-	 result = fnCheckPacket(arrInitialSim[curr_cmd].strSend.packetAt,arrInitialSim[curr_cmd].strSend.length, arrInitialSim[curr_cmd].fncType);
+	 result = fnCheckPacket(arrInitialSim[curr_cmd].strSend.packetAt,arrInitialSim[curr_cmd].strSend.length, arrInitialSim[curr_cmd].fncType, false);
 	 if(result == 1){
+		HAL_UART_Transmit(&huart1, buffer, strlen((char*)buffer), 1000);
 	 	memcpy(revRtc, buffer, sizeof(buffer));
-	 	processChar(revRtc, '\n', arrRevProcess);
+	 	fncStringhandler(revRtc, arrRevProcess);
 	 	vr_test = strlen(arrRevProcess);
 	 	//HAL_UART_Transmit(&huart1, &vr_test, 1, 1000);
-	 	result = 0;
-	 	}
+	 	if(arrRevProcess[vr_test-1] == 1){
+	 	 	takeTime((uint8_t*)arrRevProcess);
+	 	 	set_rtc_data();
+	 	 	memset(arrRevProcess, '\0', 256);
+	 		}
+	 }
 }
 
 void Sim_work(void){
@@ -285,7 +306,7 @@ void Sim_work(void){
  		  fncSend_CommandAT(CMD_CREATE_TCP, CHECK_CMD_CIPOPQUERY);
           break;
  	 case CHECK_CMD_CIPOPQUERY:
- 		  fncSend_CommandAT(CHECK_CMD_CIPOPQUERY, CMD_SEND_DATA);
+ 		  fncSend_CommandAT(CHECK_CMD_CIPOPQUERY, CMD_SENDREC_DATA);
           break;
 // 	 case CMD_SEND_DATA:
 // 		 if(1 == sTimer_10s.flag_timer){
@@ -338,7 +359,7 @@ void Sim_work(void){
 }
 
 void Sim_SendToServer(uint8_t curr_cmd, uint8_t *data, uint8_t len, uint32_t time_send_data){
-	COMBACK:if(CMD_SEND_DATA == gsm_state){
+	COMBACK:if(CMD_SENDREC_DATA == gsm_state){
 				if(vr_flag == 0){
 					Set_Frequency_Send_Data(time_send_data);
 					vr_flag = 1;
@@ -353,6 +374,20 @@ void Sim_SendToServer(uint8_t curr_cmd, uint8_t *data, uint8_t len, uint32_t tim
 				}
 
 		//gsm_state = CMD_RECEIVE_DATA;
+	}
+}
+
+void Packet_Rtc_SendToServer(uint8_t *data, uint8_t len, uint8_t time_send_data){
+	if(1 == sTimer_1000ms.flag_timer){
+		packet_rtc_data(data);
+		Sim_SendToServer(CMD_SEND_DATA, data, len, time_send_data);
+		sTimer_1000ms.flag_timer = 0;
+	}
+}
+
+void Sim_ReceiveToServer(uint8_t curr_cmd){
+	if(CMD_SENDREC_DATA == gsm_state){
+			fncReceive_DataServer(curr_cmd);
 	}
 }
 
@@ -372,4 +407,8 @@ void wait_to_reinitialTCP(uint8_t time){
 		  	gsm_state = CMD_CREATE_TCP;
 		  	count = 0;
 		  }
+}
+
+int8_t getCurCmdState(){
+	return gsm_state;
 }
