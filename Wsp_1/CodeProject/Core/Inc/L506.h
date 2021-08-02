@@ -11,7 +11,6 @@
 #include <stdbool.h>
 
 #define 	CMD_PWNON					-1
-#define 	TIMEOUT_WAIT_RX_MS 		    200
 
 typedef uint8_t (*fncProcess)(char*);
 
@@ -52,7 +51,9 @@ typedef enum
 void Sim_PWON();
 void Sim_PWOFF();
 void Pow_ON_OFF();
+void getBuffRx();
 void GSM_Init();
+
 
 uint8_t fnParseOKPacket(char* arrRes);
 uint8_t fnParseCPINPacket(char* arrRes);
@@ -66,15 +67,14 @@ uint8_t fnParseSendSVPacket(char* arrRes);
 uint8_t fnCheckSendSVPacket(char* arrRes);
 uint8_t fnParseReceiveSVPacket(char* arrRes);
 
-uint8_t fnCheckPacket(uint8_t* packet, uint16_t len, fncProcess fnParse, bool showLog);
-void GPRS_Ask(uint8_t cmd[], uint8_t len);
+uint8_t fnCheckPacket(uint8_t* packet, uint16_t len, fncProcess fnParse, uint16_t delayWaitRxMs);
 void fncSend_CommandAT(uint8_t curr_cmd, uint8_t next_cmd);
-uint8_t fncSend_DataServer(uint8_t curr_cmd, uint8_t *arrSend, uint32_t len);
-void  fncReceive_DataServer(uint8_t curr_cmd);
 void Sim_work(void);
+void fncReceive_DataServer();
+void fncCmdReceiveData(uint8_t curr_cmd);
+uint8_t fncSend_DataServer(uint8_t curr_cmd, uint8_t *arrSend, uint32_t len);
 void Sim_SendToServer(uint8_t curr_cmd, uint8_t *data, uint8_t len, uint32_t time_send_data);
 void Packet_Rtc_SendToServer(uint8_t *data, uint8_t len, uint8_t time_send_data);
-void Sim_ReceiveToServer(uint8_t curr_cmd);
 void wait_to_reinitial(uint8_t time);
 void wait_to_reinitialTCP(uint8_t time);
 

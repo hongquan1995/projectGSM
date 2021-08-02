@@ -17,13 +17,16 @@ sTimer sTimer_1000ms;
 uint32_t time_sendServer = 19999;
 uint16_t num_check = 0;
 
-extern RTC_TimeTypeDef sTime;
-extern RTC_DateTypeDef sDate;
+RTC_TimeTypeDef sTime;
+RTC_DateTypeDef sDate;
 
 
-extern RTC_TimeTypeDef sTimedif;
-extern RTC_DateTypeDef sDatedif;
+RTC_TimeTypeDef sTimedif;
+RTC_DateTypeDef sDatedif;
+
 extern RTC_HandleTypeDef hrtc;
+
+extern uint8_t vr_flag;
 
 RTC_AlarmTypeDef nAlarm;
 
@@ -52,6 +55,14 @@ void takeTime(uint8_t *sv_time){
 	 sDatedif.Year = *(sv_time+5);
 }
 
+void delete_rtc(){
+	sTimedif.Hours = 0;
+	sTimedif.Minutes = 0;
+	sTimedif.Seconds = 0;
+	sDatedif.Date = 0;
+	sDatedif.Month = 0;
+	sDatedif.Year = 0;
+}
 void convertTime(uint8_t *p_time, uint8_t factor, uint16_t index){
   		*(p_time+0) = (sTime.Hours/factor)+48;
   		*(p_time+1) = (sTime.Hours%factor)+48;
@@ -132,6 +143,8 @@ void get_rtc_data(void)
 void set_rtc_data(void){
  	HAL_RTC_SetTime(&hrtc, &sTimedif, RTC_FORMAT_BIN);
  	HAL_RTC_SetDate(&hrtc, &sDatedif, RTC_FORMAT_BIN);
+ 	vr_count = 1;
+// 	vr_flag = 0;
 }
 
 void packet_rtc_data(uint8_t* output)

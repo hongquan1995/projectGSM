@@ -18,14 +18,16 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include "myLib.h"
+
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "myLib.h"
 #include "L506.h"
 #include "string.h"
 #include "time.h"
+#include "UartRingbuffer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,21 +53,17 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-uint8_t data = 0;
-uint8_t indexBuffer = 0;
-uint8_t buffer[256];
+
 uint8_t arrtime_rtc[256];
-//uint8_t txTest[] = "quanchim456\r\n";
 
-extern sTimer sTimer_1000ms;
 
-RTC_TimeTypeDef sTime = {0};
-RTC_DateTypeDef sDate = {0};
+//RTC_TimeTypeDef sTime = {0};
+//RTC_DateTypeDef sDate = {0};
+//
+//RTC_TimeTypeDef sTimedif = {0};
+//RTC_DateTypeDef sDatedif = {0};
 
-RTC_TimeTypeDef sTimedif = {0};
-RTC_DateTypeDef sDatedif = {0};
-
-RTC_AlarmTypeDef sAlarm = {0};
+//RTC_AlarmTypeDef sAlarm = {0};
 
 /* USER CODE END PV */
 
@@ -119,9 +117,10 @@ int main(void)
   MX_USART3_UART_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Receive_IT(&huart3, &data, 1);
+//  HAL_UART_Receive_IT(&huart3, &data, 1);
 
   HAL_TIM_Base_Start_IT(&htim2);
+  Ringbuf_init(huart3);
 
   /* USER CODE END 2 */
 
@@ -134,7 +133,9 @@ int main(void)
     /* USER CODE BEGIN 3 */
 		Sim_work();
 		Packet_Rtc_SendToServer(arrtime_rtc, strlen((char*)arrtime_rtc), TIME_SEND_S);
-		Sim_ReceiveToServer(CMD_RECEIVE_DATA);
+		// xu ly THB
+		fncReceive_DataServer();
+
   }
   /* USER CODE END 3 */
 }
@@ -427,19 +428,19 @@ static void MX_GPIO_Init(void)
 
 }
 
-/* USER CODE BEGIN 4 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	if(huart->Instance == USART3)
-	{
-		if(data != 0){
-		buffer[indexBuffer] = data;
-		indexBuffer++;
-		//HAL_UART_Transmit_IT(&huart1, (uint8_t *)&Data, 1);
-		HAL_UART_Receive_IT(&huart3, &data, 1);
-		}
-	}
-}
+///* USER CODE BEGIN 4 */
+//void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+//{
+//	if(huart->Instance == USART3)
+//	{
+//		if(data != 0){
+//		buffer[indexBuffer] = data;//thay buffer b?ng ring buffer
+//		indexBuffer++;
+//		//HAL_UART_Transmit_IT(&huart1, (uint8_t *)&Data, 1);
+//		HAL_UART_Receive_IT(&huart3, &data, 1);
+//		}
+//	}
+//}
 
 /* USER CODE END 4 */
 

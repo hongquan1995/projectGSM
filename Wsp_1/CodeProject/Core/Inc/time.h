@@ -25,8 +25,8 @@ typedef struct{
 
 void fncStringhandler(char *strInput, char strOuput[]);
 void takeTime(uint8_t *sv_time);
+void delete_rtc();
 void convertTime(uint8_t *p_time, uint8_t factor, uint16_t index);
-uint8_t convertTimeSendSV(uint8_t vrBCD);
 void set_alarm_A(uint8_t hour,uint8_t minute,uint8_t second);
 void get_rtc_data(void);
 void set_rtc_data(void);
