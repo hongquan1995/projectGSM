@@ -55,15 +55,8 @@ UART_HandleTypeDef huart3;
 /* USER CODE BEGIN PV */
 
 uint8_t arrtime_rtc[256];
+uint32_t Time_send_sv = 10;
 
-
-//RTC_TimeTypeDef sTime = {0};
-//RTC_DateTypeDef sDate = {0};
-//
-//RTC_TimeTypeDef sTimedif = {0};
-//RTC_DateTypeDef sDatedif = {0};
-
-//RTC_AlarmTypeDef sAlarm = {0};
 
 /* USER CODE END PV */
 
@@ -132,7 +125,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 		Sim_work();
-		Packet_Rtc_SendToServer(arrtime_rtc, strlen((char*)arrtime_rtc), TIME_SEND_S);
+		Packet_Rtc_SendToServer(arrtime_rtc, strlen((char*)arrtime_rtc), Time_send_sv);
 		// xu ly THB
 		fncReceive_DataServer();
 
@@ -434,7 +427,7 @@ static void MX_GPIO_Init(void)
 //	if(huart->Instance == USART3)
 //	{
 //		if(data != 0){
-//		buffer[indexBuffer] = data;//thay buffer b?ng ring buffer
+//		buffer[indexBuffer] = data;//thay buffer bang ring buffer
 //		indexBuffer++;
 //		//HAL_UART_Transmit_IT(&huart1, (uint8_t *)&Data, 1);
 //		HAL_UART_Receive_IT(&huart3, &data, 1);

@@ -22,6 +22,7 @@ extern sTimer sTimer_1000ms;
 
 extern uint8_t vr_count;
 extern uint16_t num_check;
+extern uint32_t Time_send_sv;
 
 extern RTC_TimeTypeDef sTimedif;
 extern RTC_DateTypeDef sDatedif;
@@ -31,7 +32,7 @@ uint8_t vr_flag = 0;
 int8_t gsm_state = -1;
 uint8_t result;
 uint8_t answer;
-uint8_t count = 0;
+uint8_t count_time = 0;
 
 uint8_t flag_rev = 0;
 
@@ -65,9 +66,9 @@ t_uartAt arrInitialSim[]={{CHECK_CMD_AT, 				{(uint8_t*)"AT\r\n",4},												
 						  {CHECK_ATTACHED_STATUS, 		{(uint8_t*)"AT+CGATT?\r\n",11},										fnParseCGATTPacket},
 						  {CMD_CIPTIMEOUT, 				{(uint8_t*)"AT+CIPTIMEOUT=30000,20000,40000,50000\r\n",39},			fnParseOKPacket},
 						  {CHECK_MODE_TCP, 				{(uint8_t*)"AT+CIPMODE=0\r\n",14},									fnParseOKPacket},
-						  {CHECK_CMD_NETOPEN, 			{(uint8_t*)"AT+NETOPEN\r\n",12},									fnParseOKPacket},
+						  {CHECK_CMD_NETOPEN, 			{(uint8_t*)"AT+NETOPEN\r\n",12},									fnParseNETOPENPacket},
 						  {CMD_GET_IPADDR, 				{(uint8_t*)"AT+IPADDR\r\n",11},										fnParseIPADDRPacket},
-						  {CMD_CREATE_TCP, 				{(uint8_t*)"AT+CIPOPEN=1,\"TCP\",\"113.190.240.47\",7580\r\n",42},	fnParseOKPacket},
+						  {CMD_CREATE_TCP, 				{(uint8_t*)"AT+CIPOPEN=1,\"TCP\",\"113.190.240.47\",7580\r\n",42},	fnCheckCreateTCPPacket},
 						  {CHECK_CMD_CIPOPQUERY, 		{(uint8_t*)"AT+CIPOPQUERY=1\r\n",17},								fnParseCIPOPQUERYPacket},
 						  {CMD_SEND_DATA, 				{arr_cmd_send, 13},													fnParseSendSVPacket},
 						  {CMD_RECEIVE_DATA, 			{(uint8_t*)"\r\nAT+CIPRXGET=0,1\r\n",19},							fnParseOKPacket}};
@@ -88,16 +89,15 @@ void Pow_ON_OFF(){
 	HAL_Delay(1000);
 }
 
-void getBuffRx() {
-	while(!IsDataAvailable());
+void getBuffRx(bool needWaitAtFirstTime) {
+	if(needWaitAtFirstTime) {
+		while(!IsDataAvailable());
+	}
 	while(IsDataAvailable()){
 		buffer[indexBuffer] = Uart_read();
 		indexBuffer ++;
 		HAL_Delay(1);
 	}
-//	HAL_UART_Transmit(&huart1, "buff[]='", 8, 1000);
-//	HAL_UART_Transmit(&huart1, buffer, strlen((char*)buffer), 1000);
-//	HAL_UART_Transmit(&huart1, "' end buff\r\n", 12, 1000);
 	// xử lý THA
 }
 void GSM_Init(){
@@ -108,7 +108,7 @@ void GSM_Init(){
 	  HAL_Delay(25000);
 	  indexBuffer = 0;
 	  memset(buffer, '\0', 256);
-	  getBuffRx();
+	  getBuffRx(true);
 	  HAL_UART_Transmit(&huart1, buffer, strlen((char*)buffer), 1000);
 }
 
@@ -154,11 +154,31 @@ uint8_t fnParseCGATTPacket(char* arrRes) { // kiem tra trang thai GPRS
   return 0;
 }
 
+uint8_t fnParseNETOPENPacket(char* arrRes) {
+	char *ptr;
+	ptr = strstr(arrRes, "NETOPEN:SUCCESS");
+	if(ptr != 0){
+		return 1;
+	}
+	return 0;
+}
+
 uint8_t fnParseIPADDRPacket(char* arrRes) {	// nhan dia chi IP
-  if (memcmp(arrRes, "\r\n+IPADDR:", 10) == 0) {
-    return 1;
-  }
-  return 0;
+	char *ptr;
+	ptr = strstr(arrRes, "IPADDR:SUCCESS");
+	if(ptr != 0){
+		return 1;
+	}
+	return 0;
+}
+
+uint8_t fnCheckCreateTCPPacket(char * arrRes) {
+	char *ptr;
+	ptr = strstr(arrRes, "CIPOPEN:SUCCESS");
+	if(ptr != 0){
+		return 1;
+	}
+	return 0;
 }
 
 uint8_t fnParseCIPOPQUERYPacket(char* arrRes) {	// quet link ket noi
@@ -197,6 +217,7 @@ uint8_t fnParseReceiveSVPacket(char* arrRes) {	// kiem tra phan hoi nhan
 uint8_t fnCheckPacket(uint8_t* packet, uint16_t len, fncProcess fnParse, uint16_t delayWaitRxMs) { // ham gui du lieu co kiem tra phan hoi
 	 uint16_t countTimeout = 0;
 	 indexBuffer = 0;
+	 bool isFirstCall = true;
 	 memset(buffer, '\0', 256);
 //	 HAL_UART_Transmit(&huart3, packet, len, 1000);
 	 Uart_sendArray ((char*)packet,(int)len);// Send dữ liệu
@@ -205,7 +226,8 @@ uint8_t fnCheckPacket(uint8_t* packet, uint16_t len, fncProcess fnParse, uint16_
 //	 HAL_Delay(200);
 	 answer = 0;
 	 while(countTimeout++ <= delayWaitRxMs && answer == 0) {
-		 getBuffRx();
+		 getBuffRx(isFirstCall);
+		 isFirstCall = false;
 		 if (fnParse) {
 			answer = fnParse(buffer);
 		   }
@@ -216,25 +238,20 @@ uint8_t fnCheckPacket(uint8_t* packet, uint16_t len, fncProcess fnParse, uint16_
 	return answer;
 }
 
-//void GPRS_Ask(uint8_t cmd[], uint8_t len){		// ham gui du lieu
-//	 indexBuffer = 0;
-//	 memset(buffer, '\0', 256);
-//	 HAL_UART_Transmit(&huart3, cmd, len, 1000);
-//	 HAL_UART_Transmit(&huart1, cmd, len, 1000);
-//	 HAL_Delay(300);
-//	 HAL_UART_Transmit(&huart1, buffer, strlen((char*)buffer), 1000);
-//}
 
 void fncSend_CommandAT(uint8_t curr_cmd, uint8_t next_cmd){
-		result = fnCheckPacket(arrInitialSim[curr_cmd].strSend.packetAt, arrInitialSim[curr_cmd].strSend.length, arrInitialSim[curr_cmd].fncType, 0);
+		result = fnCheckPacket(arrInitialSim[curr_cmd].strSend.packetAt, arrInitialSim[curr_cmd].strSend.length, arrInitialSim[curr_cmd].fncType, 1000);
 		if(result != 0){
 			gsm_state = next_cmd;
 		}
-		else
-			if(CHECK_CMD_CIPOPQUERY == curr_cmd)
+		else {
+			if(CHECK_CMD_CIPOPQUERY == curr_cmd){
 				wait_to_reinitialTCP(10);
-			else
+			}
+			else {
 				wait_to_reinitial(10);
+			}
+		}
 }
 
 void Sim_work(void){
@@ -279,20 +296,6 @@ void Sim_work(void){
  	 case CHECK_CMD_CIPOPQUERY:
  		  fncSend_CommandAT(CHECK_CMD_CIPOPQUERY, CMD_SENDREC_DATA);
           break;
-
-// 	 case CMD_REVPROCESS:
-// 		 if(1 == sTimer_500ms.flag_timer){
-// 			if(arrRevProcess[vr_test-1] == 1){
-// 				takeTime((uint8_t*)arrRevProcess);
-// 				HAL_RTC_SetTime(&hrtc, &sTime2, RTC_FORMAT_BCD);
-// 				HAL_RTC_SetDate(&hrtc, &sDate2, RTC_FORMAT_BCD);
-// 				memset(arrRevProcess, '\0', 256);
-// 			}
-// 			if(arrRevProcess[vr_test-1] == 2){
-// 				time_conv = convertTimeSendSV(arrRevProcess[vr_test-2]);
-// 				time_sendServer = time_conv / 0.001;
-// 				memset(arrRevProcess, '\0', 256);
-// 			}
   	  }
 }
 
@@ -301,20 +304,30 @@ void fncReceive_DataServer(){
 	char revRtc[256];
 	Rx_index = 0;
 	while(IsDataAvailable()){
+
 		Rx_buffer[Rx_index] = Uart_read();
 		Rx_index ++;
 		HAL_Delay(1);
 	}
 	if(Rx_index > 0) {
 		memcpy(revRtc, Rx_buffer, sizeof(Rx_buffer));
-		fncStringhandler(revRtc, arrRevProcess);
-		vr_test = strlen(arrRevProcess);
-//			HAL_UART_Transmit(&huart1, &vr_test, 1, 1000);
-		if(arrRevProcess[vr_test-1] == 1){
-			delete_rtc();
-			takeTime((uint8_t*)arrRevProcess);
-			set_rtc_data();
-			memset(arrRevProcess, '\0', 256);
+		if(strstr(revRtc, "CIPRXGET:SUCCESS")){
+			fncStringhandler(revRtc, arrRevProcess);
+			vr_test = strlen(arrRevProcess);
+			if(arrRevProcess[vr_test-1] == 1){
+				delete_rtc();
+				takeTime((uint8_t*)arrRevProcess);
+				set_rtc_data();
+				memset(arrRevProcess, '\0', 256);
+			}
+			if(arrRevProcess[vr_test-1] == 2){
+				time_conv = convertBcdToDec(arrRevProcess[vr_test-2]);
+				Time_send_sv  = time_conv;
+				memset(arrRevProcess, '\0', 256);
+			 }
+		}
+		if(strstr(revRtc, "SERVER DISCONNECTED")){
+			gsm_state = CMD_CREATE_TCP;
 		}
 	}
 }
@@ -326,7 +339,7 @@ void fncCmdReceiveData(uint8_t curr_cmd){
 	 }
 }
 
-uint8_t fncSend_DataServer(uint8_t curr_cmd, uint8_t *arrSend, uint32_t len){
+void fncSend_DataServer(uint8_t curr_cmd, uint8_t *arrSend, uint32_t len){
 		char numArr[20]= {0};
 		char fullCmdSend[20] = {0};
 		char endChar[] = "\r\n";
@@ -337,7 +350,6 @@ uint8_t fncSend_DataServer(uint8_t curr_cmd, uint8_t *arrSend, uint32_t len){
 		strcat(fullCmdSend, numArr);
 		lengh = arrInitialSim[curr_cmd].strSend.length + strlen(numArr);
 		result = fnCheckPacket((uint8_t*)fullCmdSend, lengh, arrInitialSim[curr_cmd].fncType, 1000);
-//		HAL_UART_Transmit(&huart1, "AAA\r\n", 5, 1000);
 		if(result != 0){
 	 		num_check ++;
 	 		result = fnCheckPacket(arrSend, len, fnCheckSendSVPacket, 1000);
@@ -346,17 +358,12 @@ uint8_t fncSend_DataServer(uint8_t curr_cmd, uint8_t *arrSend, uint32_t len){
 	 				}
 	 			else
 	 				HAL_UART_Transmit(&huart1,serverText2, strlen((char*)serverText2), 1000);
-	 			return 1;
-	 	}
-	 	else{
-	 		wait_to_reinitialTCP(3);
-	 		return 0;
 	 	}
 
 }
 
 void Sim_SendToServer(uint8_t curr_cmd, uint8_t *data, uint8_t len, uint32_t time_send_data){
-	COMBACK:if(CMD_SENDREC_DATA == gsm_state){
+			if(CMD_SENDREC_DATA == gsm_state){
 				if(vr_flag == 0){
 					Set_Frequency_Send_Data(time_send_data);
 					vr_flag = 1;
@@ -364,10 +371,8 @@ void Sim_SendToServer(uint8_t curr_cmd, uint8_t *data, uint8_t len, uint32_t tim
 				if(vr_count == 1){
 					Set_Frequency_Send_Data(time_send_data);
 					vr_count = 0;
-					result = fncSend_DataServer(curr_cmd, data, len);
-					if(0 == result){
-						goto COMBACK;
-					}
+					count_time = 0;
+					fncSend_DataServer(curr_cmd, data, len);
 				}
 	}
 }
@@ -383,19 +388,19 @@ void Packet_Rtc_SendToServer(uint8_t *data, uint8_t len, uint8_t time_send_data)
 
 // ham cho de khoi tao lai
 void wait_to_reinitial(uint8_t time){
-		count++;
-		 if(count == time){
+	count_time++;
+		 if(count_time == time){
 		  	gsm_state = CMD_PWNON;
-		  	count = 0;
+		  	count_time = 0;
 		  }
 }
 
 // ham quay lai khoi tao TCP
 void wait_to_reinitialTCP(uint8_t time){
-		count++;
-		 if(count == time){
+	count_time++;
+		 if(count_time == time){
 		  	gsm_state = CMD_CREATE_TCP;
-		  	count = 0;
+		  	count_time = 0;
 		  }
 }
 
